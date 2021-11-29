@@ -36,6 +36,7 @@ bookFields = {
 
 
 # Resource: Individual Book Routes
+@api.resource('/books/<int:id>')
 class Book(Resource):
     def __init__(self):
         # Initialize The Flask Request Parser and add arguments as in an expected request
@@ -93,6 +94,7 @@ class Book(Resource):
 
 
 # This class contains the routes dealing with operations on the entire database.
+@api.resource('/books')
 class BookList(Resource):
     def __init__(self):
         # Init method initializes the request parser. It parses the request JSON Object and also validates it based on the arguments provided.
@@ -125,12 +127,6 @@ class BookList(Resource):
         return{"book": marshal(book, bookFields)}, 201
 
 
-
-
-# ----------------- Attach resource classes to some endpoints ---------------- #
-
-api.add_resource(BookList, "/books")
-api.add_resource(Book, "/books/<int:id>")
 
 if __name__ == "__main__":
     app.run(debug=True)
