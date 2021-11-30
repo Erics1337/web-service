@@ -1,130 +1,71 @@
 from flask import Flask
-from flask_restful import Resource, Api, reqparse, abort, marshal, fields
+from flask_restful import Resource, Api, reqparse, inputs, abort
 
 # Initialize Flask
 app = Flask(__name__)
 api = Api(app)
 
-# A List of Dicts to store all of the books
-books = [{
-    "id": 1,
-    "title": "Zero to One",
-    "author": "Peter Thiel",
-    "length": 195,
-    "rating": 4.17
-},
-    {
-    "id": 2,
-    "title": "Atomic Habits ",
-    "author": "James Clear",
-    "length": 319,
-    "rating": 4.35
-}
-]
+transactions = [
+    # {"payer": "DANNON", "points": 200, "timestamp": "2020-11-02T14:00:00Z"},
+    # {"payer": "CHIOBANI", "points": 500, "timestamp": "2020-13-02T14:00:00Z"},
+    # {"payer": "SUBARU", "points": 400, "timestamp": "2020-12-02T14:00:00Z"}
+    ]
 
-# Schema For the Book Request JSON
-bookFields = {
-    "id": fields.Integer,
-    "title": fields.String,
-    "author": fields.String,
-    "length": fields.Integer,
-    "rating": fields.Float
-}
-
-
-# -------------------------------- Book Class -------------------------------- #
-
-
-# Resource: Individual Book Routes
-@api.resource('/books/<int:id>')
-class Book(Resource):
+@api.resource('/transactions')
+class Transactions(Resource):
     def __init__(self):
-        # Initialize The Flask Request Parser and add arguments as in an expected request
-        # Allows you easy access to any variable on the flask.request and also validates the response based on the arguments provided
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument("title", type=str, location="json")
-        self.reqparse.add_argument("author", type=str, location="json")
-        self.reqparse.add_argument("length", type=int, location="json")
-        self.reqparse.add_argument("rating", type=float, location="json")
+        self.reqparse.add_argument("payer", type=str, location="json")
+        self.reqparse.add_argument("points", type=int, location="json")
+        self.reqparse.add_argument("timestamp", type=str, location="json")
 
-        super(Book, self).__init__()
-
-    # GET - Returns a single book object given a matching id
-    def get(self, id):
-        book = [book for book in books if book['id'] == id]
-
-        if(len(book) == 0):
-            abort(404)
-
-        return{"book": marshal(book[0], bookFields)}
-        # The marshal method just makes sure the object that is being returned is being filtered through the fields defined in the bookFields dict schema.
-
-    # PUT - Given an id
-    def put(self, id):
-        book = [book for book in books if book['id'] == id]
-
-        if len(book) == 0:
-            abort(404)
-
-        book = book[0]
-
-        # Loop Through all the passed agruments
-        args = self.reqparse.parse_args()
-        for k, v in args.items():
-            # Check if the passed value is not null
-            if v is not None:
-                # if not, set the element in the books dict with the 'k' object to the value provided in the request.
-                book[k] = v
-
-        return{"book": marshal(book, bookFields)}
-
-        # Delete - Given an id
-    def delete(self, id):
-        book = [book for book in books if book['id'] == id]
-
-        if(len(book) == 0):
-            abort(404)
-
-        books.remove(book[0])
-
-        return 201
-
-
-# ------------------------------ Booklist Class ------------------------------ #
-
-
-# This class contains the routes dealing with operations on the entire database.
-@api.resource('/books')
-class BookList(Resource):
-    def __init__(self):
-        # Init method initializes the request parser. It parses the request JSON Object and also validates it based on the arguments provided.
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument(
-            "title", type=str, required=True, help="The title of the book must be provided", location="json")
-        self.reqparse.add_argument(
-            "author", type=str, required=True, help="The author of the book must be provided", location="json")
-        self.reqparse.add_argument("length", type=int, required=True,
-                                   help="The length of the book (in pages)", location="json")
-        self.reqparse.add_argument(
-            "rating", type=float, required=True, help="The rating must be provided", location="json")
-
-    # simply returns all the elements in the books list
+        super(Transactions, self).__init__()
+    
+    # Returns list of payer point balance objects
     def get(self):
-        return{"books": [marshal(book, bookFields) for book in books]}
+        return{"transactions": transactions}, 200
 
-    # takes a JSON Object. Parses it , creates a new dict and appends it to the Books list.
+
+    # Adds transactions for a specific payer and date
     def post(self):
         args = self.reqparse.parse_args()
-        book = {
-            "id": books[-1]['id'] + 1 if len(books) > 0 else 1,
-            "title": args["title"],
-            "author": args["author"],
-            "length": args["length"],
-            "rating": args["rating"]
+        
+        transaction = {
+        "payer": args["payer"],
+        "points": args["points"],
+        "timestamp": args["timestamp"],
         }
+        transactions.append(transaction)
+            
+        return {"Message": "Entry Submitted Successfuly"}, 201
 
-        books.append(book)
-        return{"book": marshal(book, bookFields)}, 201
+
+    # Spend points using the rules above and return a list of { "payer": <string>, "points": <integer> } for each call.
+    def put(self):
+        args = self.reqparse.parse_args()
+        points = args['points']
+        
+        transactions.sort(key = lambda x:x['timestamp'])
+
+        # case 1: oldest transaction has enough points to spend request points
+        # case 2: not enough points to spend in one transaction, spend what you can and 
+        # check if next oldest transaction can spend the remainder; repeat until there are no more transactions to spend points on
+
+        i = 0
+        while i+1 <= len(transactions) and points != 0:
+            if transactions[i]['points'] >= points:
+                transactions[i]['points'] -= points
+                break
+            else:
+                points -= transactions[i]['points']
+                transactions[i]['points'] = 0
+                if i+1 == len(transactions):
+                    abort(400, description="Not enough points")
+                i += 1
+
+        transNoTime = [{k: v for k, v in d.items() if k != 'timestamp'} for d in transactions]
+
+        return {"transactions": transNoTime}, 200
 
 
 
