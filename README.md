@@ -28,16 +28,28 @@ python3 api.py
 # Examples
 <a name="add"></a>Add transactions for a specific payer and date
 ```
-
+POST /transactions
+{
+  "payer": "SUBARU", 
+  "points": 400, 
+  "timestamp": "2020-12-02T14:00:00Z"
+  }
 ```
 <a name="spend"></a>Spend points using the rules above and return a list of {"payer": <string>, "points": <integer>} for each call
 ```
-python3 api.py
+PUT /transactions
+{
+  points: 100
+}
 ```
 <a name="balances"></a>Returns all payer points balances
 ```
-python3 api.py
+GET /transactions
 ```
+
+# Unit Testing
+api_test.py includes tests for all three endpoints of the API.
+Test each case individually by restarting the server between calls.
 
 # Developer Notes
 Users have points in their accounts
