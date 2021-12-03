@@ -65,7 +65,7 @@ class Transactions(Resource):
 
         transNoTime = [{k: v for k, v in d.items() if k != 'timestamp'} for d in transactions]
 
-        return {"transactions": transNoTime}, 200
+        return transNoTime, 200
 
 
 
